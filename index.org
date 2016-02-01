@@ -1,0 +1,166 @@
+* peertorrent
+
+this is a simple, command line utility for sharing files with your friends
+
+just pass it a file over the command line, and it will pass back a magnet link, and seed the file
+
+** installation
+
+to install the dependencies, just
+
+#+BEGIN_SRC shell
+npm install
+#+END_SRC
+
+** set up paths to bins
+*** DONE torrent-bin
+if i =npm install= this directory, 
+the [[https://www.npmjs.com/package/torrent][torrent]] cli client will be available in =node_modules/bin=
+
+#+name: torrent-bin
+#+BEGIN_SRC shell
+echo "./node_modules/.bin/torrent"
+#+END_SRC
+*** DONE magnet-link-bin
+ditto for the [[https://www.npmjs.com/package/magnet-link][magnet-link]] cli client
+#+name: magnet-link-bin
+#+BEGIN_SRC shell
+echo "./node_modules/.bin/magnet-link"
+#+end_src
+
+#+RESULTS: magnet-link-bin
+: ./node_modules/.bin/magnet-link
+** trackers URL
+#+name: trackers-url
+#+BEGIN_SRC shell
+echo "&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A80&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969&tr=udp%3A%2F%2Fexodus.desync.com%3A6969"
+#+END_SRC
+
+** DONE creating torrents from the cli tools
+*** DONE make a folder with some test files
+
+make a dir =xyz= here, with files =a.txt= and =b.txt=
+
+#+BEGIN_SRC shell
+mkdir xyz; echo beep > xyz/a.txt; echo boop > xyz/b.txt
+#+END_SRC
+
+*** DONE seed a torrent of it
+
+we use =torrent create= to create an intermediate torrent
+
+then pass this to =torrent=
+
+#+BEGIN_SRC shell :var TORRENT_BIN=torrent-bin
+$TORRENT_BIN create xyz > out.torrent
+echo `$TORRENT_BIN info out.torrent`
+#+END_SRC
+
+#+RESULTS:
+| info": { "files": [ { "length | a.txt | length | b.txt | xyz | piece length: 16384 } | 0227c9e3d50afbc10056380b6ffad2d5b6a7f24a | xyz | private: false | created: {} | udp://tracker.openbittorrent.com:80 | udp://tracker.internetwarriors.net:1337 | udp://tracker.leechers-paradise.org:6969 | udp://tracker.coppersurfer.tk:6969 | udp://exodus.desync.com:6969 | wss://tracker.webtorrent.io | wss://tracker.btorrent.xyz | udp://tracker.openbittorrent.com:80 | udp://tracker.internetwarriors.net:1337 | udp://tracker.leechers-paradise.org:6969 | udp://tracker.coppersurfer.tk:6969 | udp://exodus.desync.com:6969 | wss://tracker.webtorrent.io | wss://tracker.btorrent.xyz ] | urlList: [] | path": "xyz/a.txt | a.txt | length: 5 | offset: 0 } | path": "xyz/b.txt | b.txt | length: 5 | offset: 5 } ] | length: 10 | pieceLength: 16384 | lastPieceLength: 10 | 336b26a1fbd1c7bbd5ec8506d30b4d8cf471f222 |
+
+**** kinterestingly, the following does NOT work:
+
+#+BEGIN_SRC shell :var TORRENT_BIN=torrent-bin
+$TORRENT_BIN `$TORRENT_BIN create xyz`
+#+end_src
+
+#+RESULTS:
+
+*** DONE need to get the magnet link out before seeding begins
+**** DONE this simple way works
+
+#+BEGIN_SRC shell :var TORRENT_BIN=torrent-bin MAGNET_LINK_BIN=magnet-link-bin
+$TORRENT_BIN create xyz > out.torrent
+echo `$MAGNET_LINK_BIN out.torrent`
+#+end_src
+
+#+RESULTS:
+: magnet:?xt=urn:btih:0227c9e3d50afbc10056380b6ffad2d5b6a7f24a
+**** DONE _not working_ a more parsimonious way...
+
+#+BEGIN_SRC shell :var TORRENT_BIN=torrent-bin MAGNET_LINK_BIN=magnet-link-bin
+$MAGNET_LINK_BIN `$TORRENT_BIN create xyz`
+#+end_src
+
+#+RESULTS:
+** TODO possible improvements
+*** TODO could wrap this in something that handles files (rather than folders)
+**** would take an arbitrary number of files as input (scp syntax)
+**** and create a folder containing each one 
+***** (or, if input is just 1 folder, we are done)
+*** TODO could ENCRYPT files too
+**** though not clear how
+*** TODO could allow a WHITELIST
+**** if you want a robust blacklist, use a regular torrent client
+**** if you want to send stuff to ONE PERSON, use this.....
+*** TODO could HANG UP after all whitelist ppl got it
+**** AND delete the torrent file
+**** so no one can seed it again...
+***** or at least so it seems like no one can seed it again
+** building a central node script
+*** specs
+**** peerscp [folder]
+***** you get a magnet link 
+***** it starts seeding
+*** TODO implementation
+**** DONE try 1: simplest possible bash script
+
+#+BEGIN_SRC shell :var TORRENT_BIN=torrent-bin MAGNET_LINK_BIN=magnet-link-bin 
+$TORRENT_BIN create xyz > out.torrent
+echo `$MAGNET_LINK_BIN out.torrent`
+$TORRENT_BIN out.torrent
+#+END_SRC
+
+**** TODO try 2: slightly fancier
+this doesn't work.
+i need to use the torrent metadata to make a full magnet link,
+with trackers.
+
+this would be easy ennough in js:
+
+***** DONE take output from =torrent info= over process.stdin
+#+BEGIN_SRC js :tangle generate-magnet.js
+var parse = require('parse-torrent'),
+    concat = require('concat-stream')
+
+function makeMagnetURI (f) {
+  var t = parse(f)
+  console.log(parse.toMagnetURI(t))
+}
+
+function handleError (err) {
+  console.log(err)
+  process.exit(1)
+}
+
+process.stdin.pipe(concat(makeMagnetURI))
+
+process.stdin.on('error', handleError)
+#+END_SRC
+
+now, we should be able to get a magnet, by piping a file in
+
+#+BEGIN_SRC shell :var TORRENT_BIN=torrent-bin
+
+echo `node generate-magnet.js < out.torrent`
+
+#+END_SRC
+
+#+RESULTS:
+: magnet:?xt=urn:btih:0227c9e3d50afbc10056380b6ffad2d5b6a7f24a&dn=xyz&tr=udp%3A%2F%2Fexodus.desync.com%3A6969&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A80&tr=wss%3A%2F%2Ftracker.btorrent.xyz&tr=wss%3A%2F%2Ftracker.webtorrent.io
+
+***** DONE now we can do an even simple bash script
+#+BEGIN_SRC shell :var TORRENT_BIN=torrent-bin :tangle peerscp.sh
+$TORRENT_BIN create xyz > out.torrent
+echo `node generate-magnet.js < out.torrent`
+$TORRENT_BIN seed out.torrent
+#+END_SRC
+
+that still doesn't work!
+
+in fact, this doesnt even work when i generate a torrent file, seed it in =torrent=, and add it to transmission!!
+
+something's not right...
+
+* TODO looks like no CLI torrent clients are working for me
