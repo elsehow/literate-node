@@ -1,0 +1,95 @@
+#    -*- mode: org -*-
+
+
+Archived entries from file /Users/ffff/Projects/literate-node/index.org
+
+
+* old stuff i tried
+:PROPERTIES:
+:ARCHIVE_TIME: 2016-01-31 Sun 19:44
+:ARCHIVE_FILE: ~/Projects/literate-node/index.org
+:ARCHIVE_OLPATH: peertorrent
+:ARCHIVE_CATEGORY: index
+:END:
+** making a torrent with the command line 
+i should be able to make a torrent file
+by passing stuff to the [[https://www.npmjs.com/package/torrent][torrent]] cli client from npm 
+
+#+BEGIN_SRC shell :var TORRENT_BIN=torrent-bin
+$TORRENT_BIN create index.org
+#+END_SRC
+
+#+RESULTS:
+| d8:announce35:udp://tracker.openbittorrent.com:8013:announce-listll35:udp://tracker.openbittorrent.com:80el39:udp://tracker.internetwarriors.net:1337el40:udp://tracker.leechers-paradise.org:6969el34:udp://tracker.coppersurfer.tk:6969el28:udp://exodus.desync.com:6969el27:wss://tracker.webtorrent.ioel26:wss://tracker.btorrent.xyzee13:creation | datei1454295457797e8:encoding5:UTF-84:infod6:lengthi3680e4:name9:index.org12:piece | lengthi16384e6:pieces20:ñâúæ¼®¤ÿÿL¥ |
+| m.­ee                                                                                                                                                                                                                                                                                                                                                |                                                                                    |                                             |
+
+*** piping =torrent create= output to =torrent=
+
+I should also be able to seed a file by passing a torrent to it
+
+so, i ought to be able to seed a file by stringing 
+
+#+BEGIN_SRC shell :var TORRENT_BIN=torrent-bin
+$TORRENT_BIN `$TORRENT_BIN create index.org`
+#+END_SRC
+
+#+RESULTS:
+
+ok, that doesnt work for some reason 
+
+*** intermediate torrent file
+
+let's first create a torrent file, then pass that in 
+
+#+BEGIN_SRC shell :var TORRENT_BIN=torrent-bin
+$TORRENT_BIN index.org > out.torrent
+$TORRENT_BIN info out.torrent
+#+END_SRC
+
+#+RESULTS:
+
+
+doesnt work either
+
+**wait** -- this doesnt work bc torrents need to be a folder.
+** magnet links
+
+* DONE try 1: simplest possible bash script
+:PROPERTIES:
+:ARCHIVE_TIME: 2016-01-31 Sun 21:39
+:ARCHIVE_FILE: ~/Projects/literate-node/index.org
+:ARCHIVE_OLPATH: peerscp/specs/implementation
+:ARCHIVE_CATEGORY: index
+:ARCHIVE_TODO: DONE
+:END:
+
+#+BEGIN_SRC shell :var TORRENT_BIN=torrent-bin MAGNET_LINK_BIN=magnet-link-bin 
+$TORRENT_BIN create xyz > out.torrent
+echo `$MAGNET_LINK_BIN out.torrent`
+$TORRENT_BIN out.torrent
+#+END_SRC
+
+this doesn't work.
+i notice that much of the metadata isnt in the tracker url
+feross's parse-torrent does this, so i'll use that instead.
+
+
+* DONE try 1: simplest possible bash script
+:PROPERTIES:
+:ARCHIVE_TIME: 2016-01-31 Sun 21:40
+:ARCHIVE_FILE: ~/Projects/literate-node/index.org
+:ARCHIVE_OLPATH: peerscp/specs/implementation
+:ARCHIVE_CATEGORY: index
+:ARCHIVE_TODO: DONE
+:END:
+
+#+BEGIN_SRC shell :var TORRENT_BIN=torrent-bin MAGNET_LINK_BIN=magnet-link-bin 
+$TORRENT_BIN create xyz > out.torrent
+echo `$MAGNET_LINK_BIN out.torrent`
+$TORRENT_BIN out.torrent
+#+END_SRC
+
+this doesn't work.
+i notice that much of the metadata isnt in the tracker url
+feross's parse-torrent does this, so i'll use that instead.
+
